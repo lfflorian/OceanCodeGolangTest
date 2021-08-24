@@ -59,6 +59,10 @@ func (f *Factory) StartAssemblingProcess(amountOfVehicles int) {
 				vehicle.TestingLog = f.testCar(vehicle)
 				vehicle.AssembleLog = idleSpot.GetAssembledLogs()
 				idleSpot.SetVehicle(nil)
+
+				fmt.Printf("The testingLog from car with id %d, is: %s \n", vehicle.Id, vehicle.TestingLog)
+				fmt.Printf("The AssembleLog from car with id %d, is: %s \n", vehicle.Id, vehicle.AssembleLog)
+
 				f.AssemblingSpots <- idleSpot
 			}
 

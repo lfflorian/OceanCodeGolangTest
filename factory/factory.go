@@ -2,6 +2,7 @@ package factory
 
 import (
 	"fmt"
+	"sync"
 
 	".main.go/assemblyspot"
 	".main.go/vehicle"
@@ -38,23 +39,34 @@ func New() *Factory {
 func (f *Factory) StartAssemblingProcess(amountOfVehicles int) {
 	vehicleList := f.generateVehicleLots(amountOfVehicles)
 
-	for _, vehicle := range vehicleList {
-		fmt.Println("Assembling vehicle...")
+	c := make(chan int, assemblySpots)
+	var wg sync.WaitGroup
 
-		idleSpot := <-f.AssemblingSpots
-		idleSpot.SetVehicle(&vehicle)
-		vehicle, err := idleSpot.AssembleVehicle()
+	for i := 0; i < len(vehicleList); i++ {
+		c <- i
+		wg.Add(1)
 
-		if err != nil {
-			continue
-		}
+		go func(v *vehicle.Car) {
+			defer wg.Done()
+			fmt.Println("Assembling vehicle...")
 
-		vehicle.TestingLog = f.testCar(vehicle)
-		vehicle.AssembleLog = idleSpot.GetAssembledLogs()
+			idleSpot := <-f.AssemblingSpots
+			idleSpot.SetVehicle(v)
 
-		idleSpot.SetVehicle(nil)
-		f.AssemblingSpots <- idleSpot
+			vehicle, err := idleSpot.AssembleVehicle()
+
+			if err == nil {
+				vehicle.TestingLog = f.testCar(vehicle)
+				vehicle.AssembleLog = idleSpot.GetAssembledLogs()
+				idleSpot.SetVehicle(nil)
+				f.AssemblingSpots <- idleSpot
+			}
+
+			<-c
+		}(&vehicleList[i])
 	}
+
+	wg.Wait()
 }
 
 func (Factory) generateVehicleLots(amountOfVehicles int) []vehicle.Car {
